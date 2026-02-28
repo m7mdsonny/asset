@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مستند تسليم أصل / Asset Handover Document</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --primary: {{ primary_color }}; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans Arabic', 'Segoe UI', 'Arabic UI Display', Tahoma, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #1e293b;
+      font-size: 11pt;
+      line-height: 1.6;
+      background: #f8fafc;
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .toolbar button, .toolbar a {
+      font-family: inherit;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar .btn-print { background: #3b82f6; color: #fff; }
+    .toolbar .btn-print:hover { background: #2563eb; }
+    .toolbar .btn-pdf { background: #10b981; color: #fff; }
+    .toolbar .btn-pdf:hover { background: #059669; }
+    .toolbar .btn-qr { background: #8b5cf6; color: #fff; }
+    .toolbar .btn-qr:hover { background: #7c3aed; }
+    .page-container {
+      max-width: 210mm;
+      margin: 24px auto;
+      padding: 24px;
+      background: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      border-radius: 12px;
+    }
+    @page { size: A4; margin: 20mm; }
+    .header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .header-inner { width: 100%; }
+    .logo-cell { width: 120px; vertical-align: middle; }
+    .logo { max-height: 72px; max-width: 180px; display: block; }
+    .company-info { vertical-align: middle; padding-right: 16px; }
+    .company-name {
+      font-size: 22pt;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 8px 0;
+    }
+    .company-meta { font-size: 9pt; color: #64748b; margin: 0; }
+    .company-meta span { display: inline-block; margin-left: 12px; }
+    .doc-title {
+      text-align: center;
+      font-size: 18pt;
+      font-weight: 700;
+      margin: 24px 0 8px 0;
+      color: #0f172a;
+    }
+    .doc-title-en { font-size: 12pt; color: #64748b; font-weight: 400; margin-top: 4px; direction: ltr; text-align: center; }
+    .serial {
+      text-align: left;
+      direction: ltr;
+      font-size: 10pt;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 20px 0 10px 0;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .section-title-en { font-size: 10pt; color: #64748b; font-weight: 400; margin-top: 2px; }
+    table.data { width: 100%; border-collapse: collapse; margin: 12px 0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    table.data th, table.data td {
+      border: 1px solid #e2e8f0;
+      padding: 12px 14px;
+      text-align: right;
+    }
+    table.data .en-cell { text-align: left; direction: ltr; }
+    table.data th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      width: 28%;
+    }
+    table.data tr:nth-child(even) td { background: #f8fafc; }
+    .qr-block { text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 12px; border: 1px solid #e2e8f0; }
+    .qr-block img { max-width: 120px; height: auto; display: block; margin: 0 auto 8px; }
+    .qr-caption { font-size: 10pt; color: #64748b; margin-top: 8px; }
+    .legal {
+      font-size: 9pt;
+      margin-top: 20px;
+      padding: 16px;
+      background: #f1f5f9;
+      border-right: 4px solid var(--primary);
+      white-space: pre-wrap;
+      line-height: 1.6;
+      border-radius: 0 8px 8px 0;
+    }
+    .signature-block { margin-top: 32px; width: 100%; display: table; }
+    .sig-box {
+      width: 48%;
+      padding: 12px;
+      vertical-align: top;
+      display: table-cell;
+    }
+    .sig-line { border-bottom: 2px solid #334155; padding-top: 48px; text-align: center; font-size: 10pt; color: #475569; }
+    .sig-label { font-weight: 600; color: #0f172a; margin-bottom: 4px; }
+    .stamp-area {
+      margin-top: 24px;
+      height: 56px;
+      border: 2px dashed #cbd5e1;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 10pt;
+      line-height: 52px;
+      border-radius: 8px;
+    }
+    .footer-note { margin-top: 24px; font-size: 9pt; color: #94a3b8; text-align: center; }
+    .en { direction: ltr; text-align: left; }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar, .no-print { display: none !important; }
+      .page-container { max-width: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+      .qr-block { break-inside: avoid; }
+      .signature-block { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  {% if show_toolbar %}
+  <div class="toolbar no-print">
+    <button type="button" class="btn-print" onclick="window.print()">🖨️ طباعة / Print</button>
+    <a href="{{ download_pdf_url }}" class="btn-pdf" download>📄 تحميل PDF / Download PDF</a>
+    <button type="button" class="btn-qr" onclick="window.print();">📱 طباعة مع QR / Print with QR</button>
+  </div>
+  {% endif %}
+
+  <div class="page-container">
+    <div class="header">
+      <table class="header-inner" cellpadding="0" cellspacing="0" border="0"><tr>
+        {% if logo_url %}
+        <td class="logo-cell" width="120"><img src="{{ logo_url }}" alt="Logo" class="logo" /></td>
+        {% endif %}
+        <td class="company-info" style="padding-right: 16px;">
+          <h1 class="company-name">{{ company_name }}</h1>
+          <p class="company-meta">
+            {% if company_address %}<span>{{ company_address }}</span>{% endif %}
+            {% if company_phone %}<span>ت: {{ company_phone }} / Tel: {{ company_phone }}</span>{% endif %}
+            {% if company_email %}<span>{{ company_email }}</span>{% endif %}
+            {% if company_website %}<span>{{ company_website }}</span>{% endif %}
+          </p>
+        </td>
+      </tr></table>
+    </div>
+
+    <p class="serial">Document No. / رقم المستند: {{ document_serial }}</p>
+
+    <h2 class="doc-title">مستند تسليم أصل</h2>
+    <p class="doc-title-en en">Asset Handover Document</p>
+
+    <div class="qr-block">
+      <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" />
+      <p class="qr-caption">مسح للتحقق / Scan to verify</p>
+    </div>
+
+    <div class="section-title">بيانات الأصل / Asset Details</div>
+    <table class="data">
+      <tr><th>معرّف الأصل / Asset ID</th><td>{{ asset_id }}</td></tr>
+      <tr><th>النوع / Type</th><td>{{ asset_type }}</td></tr>
+      <tr><th>العلامة / الموديل / Brand / Model</th><td>{{ asset_brand }} {{ asset_model }}</td></tr>
+      <tr><th>الرقم التسلسلي / Serial Number</th><td>{{ asset_serial }}</td></tr>
+      <tr><th>الحالة / Status</th><td>{{ asset_status }}</td></tr>
+    </table>
+
+    {% if asset_specifications %}
+    <div class="section-title">المواصفات / Specifications</div>
+    <table class="data">
+      {% set spec_labels = {
+        'ram': 'الرام',
+        'hard_drive': 'الهارد',
+        'hard_drive_type': 'نوع الهارد',
+        'size': 'الحجم',
+        'color': 'اللون',
+        'processor': 'المعالج',
+        'graphics_card': 'كارت الشاشة',
+        'printer_type': 'نوع الطابعة',
+        'connectivity': 'التوصيل',
+        'paper_size': 'حجم الورق',
+        'storage': 'التخزين',
+        'resolution': 'الدقة',
+        'panel_type': 'نوع الشاشة',
+      } %}
+      {% for key, value in asset_specifications.items() %}
+      <tr><th>{{ spec_labels.get(key, key) }}</th><td>{{ value }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if asset_notes %}
+    <div class="section-title">ملاحظات / Notes</div>
+    <div class="legal">{{ asset_notes }}</div>
+    {% endif %}
+
+    <div class="section-title">المُسلَّم إليه / Assigned To</div>
+    <table class="data">
+      <tr><th>اسم الموظف / Employee Name</th><td>{{ employee_name }}</td></tr>
+      <tr><th>القسم / Department</th><td>{{ employee_department or '—' }}</td></tr>
+      <tr><th>المسمى الوظيفي / Job Title</th><td>{{ employee_job_title or '—' }}</td></tr>
+    </table>
+
+    {% if legal_text %}
+    <div class="section-title">نص قانوني / Legal Notice</div>
+    <div class="legal">{{ legal_text }}</div>
+    {% endif %}
+
+    <table class="signature-block" cellpadding="0" cellspacing="0" width="100%"><tr>
+      <td class="sig-box">
+        <div class="sig-label">توقيع الموظف / Employee Signature</div>
+        <div class="sig-line"> </div>
+      </td>
+      <td class="sig-box">
+        <div class="sig-label">الجهة المُخوَّلة / Authorized Signatory</div>
+        <div class="sig-line"> </div>
+      </td>
+    </tr></table>
+    <div class="stamp-area">الختم الرسمي / Official Stamp</div>
+
+    <p class="footer-note">GACMS — Group Asset Custody Management System</p>
+  </div>
+</body>
+</html>

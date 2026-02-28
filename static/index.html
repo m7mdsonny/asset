@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STC GACMS - نظام إدارة أصول المجموعة</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- للتطوير فقط: في الإنتاج استخدم Tailwind عبر PostCSS أو CLI https://tailwindcss.com/docs/installation -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { alexandria: ['Alexandria', 'sans-serif'] },
+          colors: {
+            primary: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
+            surface: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 800: '#1e293b', 900: '#0f172a' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Alexandria', sans-serif; }
+    [x-cloak] { display: none !important; }
+    .sidebar-link.router-active { background: rgba(99, 102, 241, 0.15); color: #4f46e5; border-right: 3px solid #4f46e5; }
+    .dark .sidebar-link.router-active { background: rgba(99, 102, 241, 0.25); color: #a5b4fc; border-right-color: #818cf8; }
+    .dark input[type="text"], .dark input[type="email"], .dark input[type="password"], .dark input[type="number"],
+    .dark select, .dark textarea { background-color: #1e293b !important; border-color: #475569; color: #e2e8f0; }
+    .dark .bg-white { background-color: #1e293b !important; }
+    .dark table { background-color: #1e293b; }
+    .dark thead { background-color: #334155 !important; }
+    .dark .bg-slate-50 { background-color: #1e293b !important; }
+    .dark .sticky { background-color: #0f172a; }
+    .loading-spinner { width: 1.25rem; height: 1.25rem; border: 2px solid rgba(99, 102, 241, 0.3); border-top-color: #4f46e5; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .dark .loading-spinner { border-top-color: #818cf8; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .skip-link { position: absolute; right: -9999px; top: 1rem; z-index: 100; padding: 0.5rem 1rem; background: #4f46e5; color: white; border-radius: 0.75rem; }
+    .skip-link:focus { right: 1rem; outline: 2px solid white; outline-offset: 2px; }
+    /* إخفاء النوافذ المنبثقة حتى يفتحها المستخدم (تجنب ظهورها تلقائياً) */
+    .gacms-modal { display: none !important; }
+    .gacms-modal.gacms-modal-open { display: flex !important; }
+  </style>
+</head>
+<body class="font-alexandria bg-surface-50 text-slate-800 min-h-screen dark:bg-slate-900 dark:text-slate-200 transition-colors">
+  <!-- شاشة تسجيل الدخول: تظهر أولاً دائماً حتى يتم التحقق من التوكن -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-600 to-primary-800 p-4 z-20 fixed inset-0" style="display: flex;">
+    <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-200 dark:border-slate-700">
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-primary-700">STC GACMS</h1>
+        <p class="text-slate-500 mt-1">نظام إدارة أصول المجموعة</p>
+      </div>
+      <form id="login-form" class="space-y-5">
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">البريد الإلكتروني</label>
+          <input id="login-email" type="email" name="email" required autocomplete="email"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="admin@gacms.example.com" />
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">كلمة المرور</label>
+          <input id="login-password" type="password" name="password" required autocomplete="current-password"
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="••••••••" />
+        </div>
+        <p id="login-error" class="text-red-600 text-sm hidden"></p>
+        <p class="text-slate-500 text-xs mt-1">الحساب الافتراضي: admin@gacms.example.com / Admin123!</p>
+        <button type="submit" id="login-submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 rounded-xl transition disabled:opacity-50">
+          <span id="login-btn-text">تسجيل الدخول</span>
+          <span id="login-btn-loading" class="hidden">جاري التحقق...</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- التطبيق الرئيسي: يُحمّل ويُعرض فقط بعد التحقق من التوكن -->
+  <div id="app-root" style="display: none;" x-data="app()" x-init="init()" x-effect="onRouteChange()" @open-modal.window="window.__gacmsApp && window.__gacmsApp.handleOpenModal($event.detail)" @delete-item.window="window.__gacmsApp && window.__gacmsApp.handleDelete($event.detail)" @restore-item.window="window.__gacmsApp && window.__gacmsApp.handleRestore($event.detail)" :class="{ 'dark': darkMode }" class="flex min-h-screen">
+    <a href="#main-content" class="skip-link" id="skip-link">تخطي إلى المحتوى الرئيسي</a>
+    <!-- الشريط الجانبي -->
+    <aside class="w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex flex-col fixed right-0 top-0 bottom-0 z-30 shadow-lg">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-bold text-primary-700 dark:text-primary-400">STC GACMS</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">نظام إدارة أصول المجموعة</p>
+      </div>
+      <nav class="flex-1 overflow-y-auto p-3 space-y-1">
+        <a href="#" @click.prevent="route = '/'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/' }" :aria-current="route === '/' ? 'page' : undefined">
+          <span>📊</span> لوحة التحكم
+        </a>
+        <a href="#" @click.prevent="route = '/groups'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/groups' }" :aria-current="route === '/groups' ? 'page' : undefined">
+          <span>🏢</span> المجموعات
+        </a>
+        <a href="#" @click.prevent="route = '/companies'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/companies' }" :aria-current="route === '/companies' ? 'page' : undefined">
+          <span>🏛️</span> الشركات
+        </a>
+        <a href="#" @click.prevent="route = '/branches'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/branches' }" :aria-current="route === '/branches' ? 'page' : undefined">
+          <span>📍</span> الفروع
+        </a>
+        <a href="#" @click.prevent="route = '/employees'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/employees' }" :aria-current="route === '/employees' ? 'page' : undefined">
+          <span>👥</span> الموظفون
+        </a>
+        <a href="#" @click.prevent="route = '/assets'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/assets' }" :aria-current="route === '/assets' ? 'page' : undefined">
+          <span>💻</span> الأصول
+        </a>
+        <a href="#" @click.prevent="route = '/documents'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/documents' }" :aria-current="route === '/documents' ? 'page' : undefined">
+          <span>📄</span> المستندات
+        </a>
+        <a href="#" @click.prevent="route = '/audits'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/audits' }" :aria-current="route === '/audits' ? 'page' : undefined">
+          <span>✅</span> التدقيق
+        </a>
+        <a href="#" @click.prevent="route = '/alerts'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/alerts' }" :aria-current="route === '/alerts' ? 'page' : undefined">
+          <span>🔔</span> التنبيهات
+        </a>
+        <a href="#" @click.prevent="route = '/maintenance'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/maintenance' }" :aria-current="route === '/maintenance' ? 'page' : undefined">
+          <span>🔧</span> الصيانات
+        </a>
+        <a href="#" @click.prevent="route = '/logs'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/logs' }" :aria-current="route === '/logs' ? 'page' : undefined">
+          <span>📋</span> سجل النشاط
+        </a>
+        <a href="#" @click.prevent="route = '/reports'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/reports' }" :aria-current="route === '/reports' ? 'page' : undefined">
+          <span>📑</span> التقارير
+        </a>
+        <a href="#" @click.prevent="route = '/settings'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/settings' }" :aria-current="route === '/settings' ? 'page' : undefined">
+          <span>⚙️</span> الإعدادات
+        </a>
+        <a href="#" @click.prevent="route = '/users'" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :class="{ 'router-active': route === '/users' }" :aria-current="route === '/users' ? 'page' : undefined">
+          <span>👤</span> المستخدمون
+        </a>
+      </nav>
+      <div class="p-3 border-t border-slate-200 dark:border-slate-700">
+        <button type="button" @click="logout" class="w-full text-right px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">
+          تسجيل الخروج
+        </button>
+      </div>
+    </aside>
+
+    <!-- المحتوى الرئيسي -->
+    <main id="main-content" class="flex-1 mr-64 p-6 lg:p-8 min-h-screen" role="main">
+      <div x-show="!routeReady" class="flex flex-col items-center justify-center py-24 text-slate-500 dark:text-slate-400" role="status" aria-live="polite" aria-label="جاري تحميل لوحة التحكم">
+        <span class="loading-spinner block mb-4" aria-hidden="true"></span>
+        <p class="text-lg font-medium">جاري تحميل لوحة التحكم...</p>
+      </div>
+      <div x-show="routeReady" aria-label="محتوى الصفحة">
+      <header class="mb-8 flex flex-wrap gap-4 items-start justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100" x-text="pageTitle"></h1>
+          <p class="text-slate-500 dark:text-slate-400 mt-1" x-text="pageSubtitle"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- زر الوضع الليلي -->
+          <button type="button" @click="toggleDark()" class="p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" :title="darkMode ? 'الوضع الفاتح' : 'الوضع الليلي'">
+            <span x-show="!darkMode">🌙</span>
+            <span x-show="darkMode" x-cloak>☀️</span>
+          </button>
+          <!-- شريط البحث العام -->
+        <div class="relative w-full max-w-md">
+          <input type="text" x-model="searchQuery" @input.debounce.300ms="doSearch()"
+            aria-label="بحث في الأصول، الموظفين، الشركات"
+            placeholder="بحث في الأصول، الموظفين، الشركات..."
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" aria-hidden="true">🔍</span>
+          <div x-show="searchResults && (searchResults.assets?.length || searchResults.employees?.length || searchResults.companies?.length || searchResults.branches?.length)" 
+            x-transition
+            class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-600 py-2 z-20 max-h-80 overflow-y-auto">
+            <template x-if="searchResults">
+              <div class="px-4 py-2 space-y-2">
+                <template x-for="a in (searchResults.assets || [])" :key="'a'+a.id">
+                  <a href="#" @click.prevent="goToAsset(a.id)" class="block py-2 px-3 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 text-slate-700 dark:text-slate-300" x-text="'أصل: ' + a.title"></a>
+                </template>
+                <template x-for="e in (searchResults.employees || [])" :key="'e'+e.id">
+                  <a href="#" @click.prevent="goToEmployee(e.id)" class="block py-2 px-3 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 text-slate-700 dark:text-slate-300" x-text="'موظف: ' + e.title"></a>
+                </template>
+                <template x-for="c in (searchResults.companies || [])" :key="'c'+c.id">
+                  <a href="#" @click.prevent="navigateTo('/companies'); searchResults = null; searchQuery = ''; $nextTick(() => { loadGroups(); loadCompaniesAll(); companiesGroupId = c.group_id || ''; loadCompanies(); })" class="block py-2 px-3 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 text-slate-700 dark:text-slate-300" x-text="'شركة: ' + c.title"></a>
+                </template>
+                <template x-for="b in (searchResults.branches || [])" :key="'b'+b.id">
+                  <a href="#" @click.prevent="navigateTo('/branches'); searchResults = null; searchQuery = ''; $nextTick(() => { branchesCompanyId = b.company_id || ''; loadCompaniesAll(); loadBranches(); })" class="block py-2 px-3 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 text-slate-700 dark:text-slate-300" x-text="'فرع: ' + b.title"></a>
+                </template>
+              </div>
+            </template>
+          </div>
+          <div x-show="searchResults && !(searchResults.assets?.length || searchResults.employees?.length || searchResults.companies?.length || searchResults.branches?.length) && !searchLoading"
+            x-transition class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-600 py-4 px-4 z-20 text-center text-slate-500 dark:text-slate-400">
+            لا توجد نتائج
+          </div>
+          <div x-show="searchLoading" class="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+            <span class="loading-spinner inline-block" aria-hidden="true"></span>
+          </div>
+        </div>
+        </div>
+      </header>
+
+      <!-- إشعار نجاح/خطأ -->
+      <div x-show="toastMessage" x-transition
+        class="fixed bottom-6 left-6 right-6 md:left-auto md:right-24 md:max-w-sm z-50 rounded-xl shadow-lg px-4 py-3 text-white"
+        :class="toastType === 'success' ? 'bg-green-600' : 'bg-red-600'"
+        role="status" aria-live="polite" aria-atomic="true"
+        x-text="toastMessage">
+      </div>
+
+      <!-- لوحة التحكم -->
+      <div x-show="route === '/'" x-transition class="space-y-6">
+        <p x-show="loadingDashboard" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400">
+          <span class="loading-spinner" aria-hidden="true"></span>
+          جاري التحميل...
+        </p>
+        <template x-if="!loadingDashboard">
+        <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">المجموعات</p>
+            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="dashboard.groupsCount ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">الشركات</p>
+            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="dashboard.companiesCount ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">الفروع</p>
+            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="dashboard.branchesCount ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">الموظفون</p>
+            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="dashboard.employeesCount ?? '—'"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">إجمالي الأصول</p>
+            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="dashboard.totalAssets ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">قيد الصيانة</p>
+            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400" x-text="dashboard.maintenanceCount ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">ضمان ينتهي هذا الشهر</p>
+            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="dashboard.warrantyCount ?? '—'"></p>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+            <p class="text-slate-500 dark:text-slate-400 text-sm">تنبيهات (صيانة/ضمان/مفقود)</p>
+            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400" x-text="dashboard.alertsCount ?? '—'"></p>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 overflow-hidden">
+          <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-4">ملخص حسب الشركة</h3>
+          <p x-show="!(dashboard.byCompany && dashboard.byCompany.length)" class="text-slate-500 dark:text-slate-400">لا توجد بيانات. أضف شركات وأصول.</p>
+          <table x-show="dashboard.byCompany && dashboard.byCompany.length" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الشركة</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">عدد الأصول</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">القيمة الدفترية</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in (dashboard.byCompany || [])" :key="row.name">
+                <tr class="border-b border-slate-100 dark:border-slate-700">
+                  <td class="py-3 px-4 dark:text-slate-200" x-text="row.name"></td>
+                  <td class="py-3 px-4 dark:text-slate-200" x-text="row.asset_count"></td>
+                  <td class="py-3 px-4 dark:text-slate-200" x-text="(row.book_value || 0).toLocaleString('ar-EG')"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+          <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-4">مرحباً بك في STC GACMS</h3>
+          <p class="text-slate-600 dark:text-slate-300">استخدم القائمة الجانبية للتنقل بين المجموعات، الشركات، الفروع، الموظفين والأصول. يمكنك إنشاء مستندات التسليم وتشغيل عمليات التدقيق وعرض التنبيهات من قسم الصيانات والتنبيهات.</p>
+        </div>
+        </div>
+        </template>
+      </div>
+
+      <!-- المجموعات -->
+      <div x-show="route === '/groups'" x-transition>
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <p class="text-slate-600 dark:text-slate-300">قائمة المجموعات</p>
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer">
+              <input type="checkbox" x-model="includeDeletedGroups" @change="loadGroups()" class="rounded" />
+              عرض المحذوفة
+            </label>
+          </div>
+          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'group' })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مجموعة</button>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingGroups" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingGroups" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr><th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الاسم</th><th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th></tr>
+            </thead>
+            <tbody>
+              <template x-for="g in groups.items" :key="g.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': g.is_deleted }">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="g.name"></td>
+                  <td class="py-4 px-4">
+                    <template x-if="!g.is_deleted">
+                      <span>
+                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'group', item: g })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'group', id: g.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                      </span>
+                    </template>
+                    <template x-if="g.is_deleted">
+                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'group', id: g.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="!loadingGroups && groups.items && groups.items.length === 0" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد مجموعات. أضف مجموعة جديدة.</p>
+        </div>
+      </div>
+
+      <!-- الشركات -->
+      <div x-show="route === '/companies'" x-transition>
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <p class="text-slate-600 dark:text-slate-300">قائمة الشركات (اختر مجموعة)</p>
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer" x-show="companiesGroupId">
+              <input type="checkbox" x-model="includeDeletedCompanies" @change="loadCompanies()" class="rounded" />
+              عرض المحذوفة
+            </label>
+          </div>
+          <div class="flex gap-2">
+            <select x-model="companiesGroupId" @change="loadCompanies()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— مجموعة —</option>
+              <template x-for="g in groups.items" :key="g.id">
+                <option :value="g.id" x-text="g.name"></option>
+              </template>
+            </select>
+            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'company' })" :disabled="!companiesGroupId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة شركة</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingCompanies" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingCompanies" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr><th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الاسم</th><th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th></tr>
+            </thead>
+            <tbody>
+              <template x-for="c in companies.items" :key="c.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': c.is_deleted }">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="c.name"></td>
+                  <td class="py-4 px-4">
+                    <template x-if="!c.is_deleted">
+                      <span>
+                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'company', item: c })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'company', id: c.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                      </span>
+                    </template>
+                    <template x-if="c.is_deleted">
+                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'company', id: c.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="companies.items && companies.items.length === 0 && !loadingCompanies" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد شركات أو لم تختر مجموعة.</p>
+        </div>
+      </div>
+
+      <!-- الفروع -->
+      <div x-show="route === '/branches'" x-transition>
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <p class="text-slate-600 dark:text-slate-300">قائمة الفروع (اختر شركة)</p>
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer" x-show="branchesCompanyId">
+              <input type="checkbox" x-model="includeDeletedBranches" @change="loadBranches()" class="rounded" />
+              عرض المحذوفة
+            </label>
+          </div>
+          <div class="flex gap-2">
+            <select x-model="branchesCompanyId" @change="loadBranches()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— شركة —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'branch' })" :disabled="!branchesCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة فرع</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingBranches" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingBranches" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الاسم</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">العنوان</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="b in branches.items" :key="b.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': b.is_deleted }">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="b.name"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="b.address || '—'"></td>
+                  <td class="py-4 px-4">
+                    <template x-if="!b.is_deleted">
+                      <span>
+                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'branch', item: b })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'branch', id: b.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                      </span>
+                    </template>
+                    <template x-if="b.is_deleted">
+                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'branch', id: b.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="branches.items && branches.items.length === 0 && !loadingBranches" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد فروع أو لم تختر شركة.</p>
+        </div>
+      </div>
+
+      <!-- الموظفون -->
+      <div x-show="route === '/employees'" x-transition>
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <p class="text-slate-600 dark:text-slate-300">قائمة الموظفين (شركة + فرع)</p>
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer" x-show="employeesCompanyId">
+              <input type="checkbox" x-model="includeDeletedEmployees" @change="loadEmployees()" class="rounded" />
+              عرض المحذوفة
+            </label>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <select x-model="employeesCompanyId" @change="loadEmployees(); loadBranchesForEmployees()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— شركة —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+            <select x-model="employeesBranchId" @change="loadEmployees()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— فرع —</option>
+              <template x-for="b in branchesForSelect.items" :key="b.id">
+                <option :value="b.id" x-text="b.name"></option>
+              </template>
+            </select>
+            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'employee' })" :disabled="!employeesCompanyId || !employeesBranchId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة موظف</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingEmployees" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingEmployees" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الاسم</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">القسم</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الحالة</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="e in employees.items" :key="e.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': e.is_deleted }">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="e.name"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="e.department || '—'"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="e.status"></td>
+                  <td class="py-4 px-4">
+                    <template x-if="!e.is_deleted">
+                      <span>
+                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'employee', item: e })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'employee', id: e.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                      </span>
+                    </template>
+                    <template x-if="e.is_deleted">
+                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'employee', id: e.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="employees.items && employees.items.length === 0 && !loadingEmployees" class="p-8 text-center text-slate-500 dark:text-slate-400">لا يوجد موظفون أو لم تختر شركة وفرع.</p>
+        </div>
+      </div>
+
+      <!-- الأصول -->
+      <div x-show="route === '/assets'" x-transition>
+        <!-- تفاصيل أصل واحد -->
+        <div x-show="viewAssetId" class="space-y-6">
+          <button type="button" @click="if(assetQrUrl){URL.revokeObjectURL(assetQrUrl);assetQrUrl=null;} viewAssetId = null; assetDetail = null; assetTimeline = []" class="text-primary-600 dark:text-primary-400 hover:underline mb-2">← العودة للقائمة</button>
+          <div x-show="loadingAssetDetail" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</div>
+          <div x-show="viewAssetId && !loadingAssetDetail && !assetDetail" class="p-8 text-center text-amber-600 dark:text-amber-400">
+            <p>فشل تحميل الأصل أو لا يوجد أصل بهذا المعرّف.</p>
+            <button type="button" @click="viewAssetId = null; assetDetail = null" class="mt-3 text-primary-600 dark:text-primary-400 hover:underline">العودة للقائمة</button>
+          </div>
+          <template x-if="assetDetail && !loadingAssetDetail">
+            <div class="space-y-4">
+              <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">بيانات الأصل</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <p class="md:col-span-2 flex flex-wrap items-center gap-2">
+                    <span class="text-slate-500 dark:text-slate-400">معرّف الأصل (للمسح في التدقيق):</span>
+                    <code class="text-sm bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded dark:text-slate-200 break-all" x-text="assetDetail.id"></code>
+                    <button type="button" @click="navigator.clipboard && navigator.clipboard.writeText(assetDetail.id); showToast('تم نسخ المعرّف')" class="text-primary-600 dark:text-primary-400 hover:underline text-sm">نسخ</button>
+                  </p>
+                  <p><span class="text-slate-500 dark:text-slate-400">النوع:</span> <span class="dark:text-slate-200" x-text="assetTypeNameAr(assetDetail.type)"></span></p>
+                  <p><span class="text-slate-500 dark:text-slate-400">العلامة / الموديل:</span> <span class="dark:text-slate-200" x-text="(assetDetail.brand || '') + ' ' + (assetDetail.model || '')"></span></p>
+                  <p><span class="text-slate-500 dark:text-slate-400">الرقم التسلسلي:</span> <span class="dark:text-slate-200" x-text="assetDetail.serial_number || '—'"></span></p>
+                  <p><span class="text-slate-500 dark:text-slate-400">الحالة:</span> <span class="px-2 py-1 rounded-full text-xs dark:text-slate-200" :class="statusClass(assetDetail.status)" x-text="assetDetail.status"></span></p>
+                </div>
+                <template x-if="assetDetail.specifications && Object.keys(assetDetail.specifications).filter(k => k !== 'notes').length">
+                  <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                    <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">المواصفات</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <template x-for="f in specFieldsForType(assetDetail.type)" :key="f.key">
+                        <p x-show="assetDetail.specifications[f.key]"><span class="text-slate-500 dark:text-slate-400" x-text="f.label + ':'"></span> <span class="dark:text-slate-200" x-text="assetDetail.specifications[f.key]"></span></p>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="assetDetail.specifications && assetDetail.specifications.notes">
+                  <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                    <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">ملاحظات</h4>
+                    <p class="text-slate-700 dark:text-slate-200 whitespace-pre-wrap" x-text="assetDetail.specifications.notes"></p>
+                  </div>
+                </template>
+                <div class="mt-4 flex flex-wrap gap-2" x-show="assetQrUrl">
+                  <div class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl inline-block">
+                    <img :src="assetQrUrl" alt="QR Code" class="w-24 h-24" />
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 text-center">مسح للتحقق</p>
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <template x-if="assetDetail.status === 'active'">
+                    <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'assign' })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 text-sm">تعيين لموظف</button>
+                  </template>
+                  <template x-if="assetDetail.status === 'active' && assetDetail.current_employee_id">
+                    <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'transfer' })" class="bg-amber-600 text-white px-4 py-2 rounded-xl hover:bg-amber-700 text-sm">نقل لموظف آخر</button>
+                  </template>
+                  <template x-if="assetDetail.status === 'active' && assetDetail.current_employee_id">
+                    <button type="button" @click="doReturnAsset()" class="bg-slate-600 text-white px-4 py-2 rounded-xl hover:bg-slate-700 text-sm">إرجاع</button>
+                  </template>
+                  <template x-if="assetDetail.status === 'active'">
+                    <button type="button" @click="doSendMaintenance()" class="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 text-sm">إرسال للصيانة</button>
+                  </template>
+                  <template x-if="assetDetail.status === 'maintenance'">
+                    <button type="button" @click="doReturnFromMaintenance()" class="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 text-sm">استلام من الصيانة</button>
+                  </template>
+                  <template x-if="assetDetail.status === 'active'">
+                    <button type="button" @click="doMarkLost()" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm">تسجيل كمفقود</button>
+                  </template>
+                  <button type="button" @click="doRetireAsset()" class="bg-slate-500 text-white px-4 py-2 rounded-xl hover:bg-slate-600 text-sm">إستبعاد</button>
+                </div>
+              </div>
+              <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">الجدول الزمني</h3>
+                <ul class="space-y-2">
+                  <template x-for="log in assetTimeline" :key="log.id">
+                    <li class="flex gap-3 py-2 border-b border-slate-100 dark:border-slate-700">
+                      <span class="text-slate-500 dark:text-slate-400 text-sm shrink-0" x-text="log.timestamp ? new Date(log.timestamp).toLocaleString('ar-SA') : ''"></span>
+                      <span class="font-medium dark:text-slate-200" x-text="timelineLogText(log)"></span>
+                      <span x-show="log.notes" class="text-slate-500 dark:text-slate-400 text-sm" x-text="' — ' + log.notes"></span>
+                    </li>
+                  </template>
+                </ul>
+                <p x-show="assetTimeline.length === 0" class="text-slate-500 dark:text-slate-400">لا توجد أحداث.</p>
+              </div>
+              <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">سجل الصيانة</h3>
+                <ul class="space-y-2">
+                  <template x-for="rec in assetMaintenanceRecords" :key="rec.id">
+                    <li class="flex gap-3 py-2 border-b border-slate-100 dark:border-slate-700">
+                      <span class="text-slate-500 dark:text-slate-400 text-sm shrink-0" x-text="rec.recorded_at ? new Date(rec.recorded_at).toLocaleString('ar-SA') : ''"></span>
+                      <span class="font-medium dark:text-slate-200" x-text="rec.record_type === 'send' ? 'إرسال للصيانة' : 'استلام من الصيانة'"></span>
+                      <span x-show="rec.notes" class="text-slate-500 dark:text-slate-400 text-sm" x-text="rec.notes"></span>
+                    </li>
+                  </template>
+                </ul>
+                <p x-show="assetMaintenanceRecords.length === 0" class="text-slate-500 dark:text-slate-400">لا يوجد سجل صيانة.</p>
+              </div>
+            </div>
+          </template>
+        </div>
+        <!-- قائمة الأصول -->
+        <div x-show="!viewAssetId">
+          <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div class="flex items-center gap-3">
+              <p class="text-slate-600 dark:text-slate-300">قائمة الأصول</p>
+              <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer" x-show="assetsCompanyId">
+                <input type="checkbox" x-model="includeDeletedAssets" @change="loadAssets()" class="rounded" />
+                عرض المحذوفة
+              </label>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <select x-model="assetsCompanyId" @change="loadAssets()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+                <option value="">— شركة —</option>
+                <template x-for="c in companiesAll.items" :key="c.id">
+                  <option :value="c.id" x-text="c.name"></option>
+                </template>
+              </select>
+              <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'asset' })" :disabled="!assetsCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة أصل</button>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <p x-show="loadingAssets" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+            <table x-show="!loadingAssets" class="w-full">
+              <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                <tr>
+                  <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">النوع</th>
+                  <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">العلامة / الموديل</th>
+                  <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الرقم التسلسلي</th>
+                  <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الحالة</th>
+                  <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="a in assets.items" :key="a.id">
+                  <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': a.is_deleted }">
+                    <td class="py-4 px-4 dark:text-slate-200" x-text="a.type"></td>
+                    <td class="py-4 px-4 dark:text-slate-200" x-text="(a.brand || '') + ' ' + (a.model || '')"></td>
+                    <td class="py-4 px-4 dark:text-slate-200" x-text="a.serial_number || '—'"></td>
+                    <td class="py-4 px-4"><span class="px-2 py-1 rounded-full text-xs dark:text-slate-200" :class="statusClass(a.status)" x-text="a.status"></span></td>
+                    <td class="py-4 px-4">
+                      <template x-if="!a.is_deleted">
+                        <span>
+                          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'asset', item: a })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                          <button type="button" @click="viewAssetId = a.id; loadAssetDetail(a.id)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">عرض</button>
+                          <button type="button" @click.prevent="$dispatch('delete-item', { type: 'asset', id: a.id })" class="text-red-600 dark:text-red-400 hover:underline ml-2">حذف</button>
+                        </span>
+                      </template>
+                      <template x-if="a.is_deleted">
+                        <button type="button" @click.prevent="$dispatch('restore-item', { type: 'asset', id: a.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+            <p x-show="!loadingAssets && assets.items && assets.items.length === 0" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد أصول أو لم تختر شركة.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- المستندات -->
+      <div x-show="route === '/documents'" x-transition class="space-y-6">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+          <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4">إنشاء مستند تسليم</h3>
+          <div class="flex flex-wrap gap-3 items-end mb-4">
+            <div>
+              <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الشركة</label>
+              <select x-model="documentsCompanyId" @change="loadDocumentsData()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[200px]">
+                <option value="">— اختر شركة —</option>
+                <template x-for="c in companiesAll.items" :key="c.id">
+                  <option :value="c.id" x-text="c.name"></option>
+                </template>
+              </select>
+            </div>
+          </div>
+          <p x-show="documentsCompanyId && loadingDocumentsData" class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-3">
+            <span class="loading-spinner inline-block" aria-hidden="true"></span>
+            جاري تحميل القوائم...
+          </p>
+          <div class="flex flex-wrap gap-3 items-end">
+            <div>
+              <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الأصل</label>
+              <select x-model="handoverAssetId" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[200px]">
+                <option value="">— اختر أصل —</option>
+                <template x-for="a in documentsAssetsList" :key="a.id">
+                  <option :value="a.id" x-text="(a.type || '') + ' - ' + (a.serial_number || a.id)"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الموظف</label>
+              <select x-model="handoverEmployeeId" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[200px]">
+                <option value="">— اختر موظف —</option>
+                <template x-for="e in documentsEmployeesList" :key="e.id">
+                  <option :value="e.id" x-text="e.name + (e.department ? ' - ' + e.department : '')"></option>
+                </template>
+              </select>
+            </div>
+            <button type="button" @click="createHandover()" :disabled="savingHandover || !handoverAssetId || !handoverEmployeeId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" x-text="savingHandover ? 'جاري الإنشاء...' : 'إنشاء مستند تسليم'"></button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+          <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-4">مستندات حسب الأصل</h3>
+          <div class="flex gap-3 items-end mb-4 flex-wrap">
+            <select x-model="documentsCompanyId" @change="loadDocumentsData()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[180px]">
+              <option value="">— شركة —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+            <select x-model="documentsAssetId" @change="loadDocuments()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[220px]">
+              <option value="">— اختر أصل —</option>
+              <template x-for="a in documentsAssetsList" :key="a.id">
+                <option :value="a.id" x-text="(a.type || '') + ' - ' + (a.serial_number || a.id)"></option>
+              </template>
+            </select>
+          </div>
+          <ul class="space-y-2">
+            <p x-show="loadingDocuments" class="flex items-center gap-2 text-slate-500 dark:text-slate-400 py-4"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+            <template x-for="d in documentsList" :key="d.id">
+              <li class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
+                <span class="text-slate-600 dark:text-slate-300" x-text="d.document_type + ' - ' + (d.generated_at ? new Date(d.generated_at).toLocaleString('ar-SA') : '')"></span>
+                <span class="flex gap-2">
+                  <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'handover-preview', id: d.id })" class="text-primary-600 dark:text-primary-400 hover:underline">عرض للطباعة</button>
+                  <button type="button" @click="downloadDocument(d.id)" :disabled="downloadingDocumentId === d.id" class="text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-70" x-text="downloadingDocumentId === d.id ? 'جاري التحميل...' : 'تحميل PDF'"></button>
+                </span>
+              </li>
+            </template>
+          </ul>
+          <p x-show="!documentsCompanyId" class="text-slate-500 dark:text-slate-400 py-4">اختر شركة لعرض المستندات.</p>
+          <p x-show="documentsCompanyId && !documentsAssetId" class="text-slate-500 dark:text-slate-400 py-4">اختر أصلًا لعرض المستندات.</p>
+          <p x-show="documentsAssetId && documentsList.length === 0 && !loadingDocuments" class="text-slate-500 dark:text-slate-400 py-4">لا توجد مستندات لهذا الأصل.</p>
+        </div>
+      </div>
+
+      <!-- التدقيق -->
+      <div x-show="route === '/audits'" x-transition class="space-y-6">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+          <div class="flex gap-2 items-center">
+            <select x-model="auditsCompanyId" @change="loadAudits()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— كل الشركات —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'audit' })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">بدء جلسة تدقيق</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingAudits" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingAudits" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">التاريخ</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الشركة</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الحالة</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="a in auditsList" :key="a.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="a.started_at ? new Date(a.started_at).toLocaleString('ar-SA') : '—'"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="companiesAll.items?.find(c => c.id === a.company_id)?.name || a.company_id"></td>
+                  <td class="py-4 px-4"><span class="px-2 py-1 rounded-full text-xs dark:text-slate-200" :class="a.status === 'in_progress' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'" x-text="a.status === 'in_progress' ? 'جارية' : 'منتهية'"></span></td>
+                  <td class="py-4 px-4 flex flex-wrap gap-2">
+                    <template x-if="a.status === 'in_progress'">
+                      <button type="button" @click="endAudit(a.id)" class="text-amber-600 dark:text-amber-400 hover:underline text-sm">إنهاء الجلسة</button>
+                    </template>
+                    <button type="button" @click="downloadAuditReport(a.id)" :disabled="downloadingAuditId === a.id" class="text-primary-600 dark:text-primary-400 hover:underline text-sm disabled:opacity-70" x-text="downloadingAuditId === a.id ? 'جاري التحميل...' : 'تحميل تقرير PDF'"></button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="auditsList.length === 0 && !loadingAudits" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد جلسات تدقيق.</p>
+        </div>
+      </div>
+
+      <!-- التنبيهات -->
+      <div x-show="route === '/alerts'" x-transition>
+        <div class="flex gap-2 mb-4">
+          <select x-model="alertsCompanyId" @change="loadAlerts()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+            <option value="">— اختر شركة —</option>
+            <template x-for="c in companiesAll.items" :key="c.id">
+              <option :value="c.id" x-text="c.name"></option>
+            </template>
+          </select>
+        </div>
+        <p x-show="!alertsCompanyId" class="p-6 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">اختر شركة لعرض التنبيهات.</p>
+        <p x-show="alertsCompanyId && loadingAlerts" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400">
+          <span class="loading-spinner" aria-hidden="true"></span>
+          جاري التحميل...
+        </p>
+        <div x-show="alertsCompanyId && !loadingAlerts" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-6">
+            <h3 class="font-semibold text-amber-800 dark:text-amber-300 mb-2" x-text="alertLabels.maintenance || 'تحتاج صيانة'"></h3>
+            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400" x-text="(alerts.needing_maintenance || []).length"></p>
+            <ul class="mt-2 text-sm text-amber-700 dark:text-amber-300 space-y-1" x-show="(alerts.needing_maintenance || []).length">
+              <template x-for="a in (alerts.needing_maintenance || []).slice(0,5)" :key="a.id">
+                <li x-text="a.type + ' - ' + (a.serial_number || a.id)"></li>
+              </template>
+            </ul>
+          </div>
+          <div class="bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800 p-6">
+            <h3 class="font-semibold text-blue-800 dark:text-blue-300 mb-2" x-text="alertLabels.warranty || 'الضمان ينتهي هذا الشهر'"></h3>
+            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="(alerts.warranty_expiring_this_month || []).length"></p>
+            <ul class="mt-2 text-sm text-blue-700 dark:text-blue-300 space-y-1" x-show="(alerts.warranty_expiring_this_month || []).length">
+              <template x-for="a in (alerts.warranty_expiring_this_month || []).slice(0,5)" :key="a.id">
+                <li x-text="a.type + ' - ' + (a.serial_number || a.id)"></li>
+              </template>
+            </ul>
+          </div>
+          <div class="bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-6">
+            <h3 class="font-semibold text-red-800 dark:text-red-300 mb-2" x-text="alertLabels.loss || 'مفقود'"></h3>
+            <p class="text-2xl font-bold text-red-600 dark:text-red-400" x-text="(alerts.lost || []).length"></p>
+            <ul class="mt-2 text-sm text-red-700 dark:text-red-300 space-y-1" x-show="(alerts.lost || []).length">
+              <template x-for="a in (alerts.lost || []).slice(0,5)" :key="a.id">
+                <li x-text="a.type + ' - ' + (a.serial_number || a.id)"></li>
+              </template>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- الصيانات -->
+      <div x-show="route === '/maintenance'" x-transition class="space-y-6">
+        <div class="flex flex-wrap gap-3 items-end mb-4">
+          <div>
+            <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الشركة</label>
+            <select x-model="maintenanceCompanyId" @change="loadMaintenanceAssets()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2 min-w-[200px]">
+              <option value="">— اختر شركة —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+          </div>
+          <a href="#" @click.prevent="route = '/alerts'" class="text-primary-600 dark:text-primary-400 hover:underline text-sm">عرض التنبيهات (تحتاج صيانة، ضمان، مفقود)</a>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <h3 class="p-4 border-b border-slate-200 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100">أصول قيد الصيانة</h3>
+          <p x-show="loadingMaintenance" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingMaintenance" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">النوع</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">العلامة / الموديل</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الرقم التسلسلي</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="a in maintenanceAssets.items" :key="a.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="assetTypeNameAr(a.type)"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="(a.brand || '') + ' ' + (a.model || '')"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="a.serial_number || '—'"></td>
+                  <td class="py-4 px-4">
+                    <button type="button" @click="navigateTo('/assets'); viewAssetId = a.id; loadAssetDetail(a.id)" class="text-primary-600 dark:text-primary-400 hover:underline">عرض / استلام من الصيانة</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="!loadingMaintenance && (!maintenanceAssets.items || maintenanceAssets.items.length === 0)" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد أصول قيد الصيانة أو لم تختر شركة.</p>
+        </div>
+      </div>
+
+      <!-- سجل النشاط -->
+      <div x-show="route === '/logs'" x-transition>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingLogs" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingLogs" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">التاريخ</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراء</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">النوع</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">المعرّف</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="l in logs.items" :key="l.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="l.created_at"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="l.action"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="l.resource_type"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="l.resource_id || '—'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="logs.items && logs.items.length === 0 && !loadingLogs" class="p-8 text-center text-slate-500 dark:text-slate-400">لا توجد سجلات.</p>
+        </div>
+      </div>
+
+      <!-- التقارير -->
+      <div x-show="route === '/reports'" x-transition class="space-y-6">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">تصدير التقارير</h3>
+          <p class="text-slate-500 dark:text-slate-400 mb-4">اختر الشركة (للأصول/الفروع/الموظفين) أو استخدم الأزرار العامة للتصدير.</p>
+          <div class="flex flex-wrap gap-4 items-center mb-4">
+            <select x-model="reportsCompanyId" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-3 py-2">
+              <option value="">— شركة —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+            <button type="button" @click="assetsCompanyId = reportsCompanyId; loadAssets(); navigateTo('/assets')" :disabled="!reportsCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">تقرير الأصول (قائمة)</button>
+            <button type="button" @click="downloadAssetsCsv()" :disabled="!reportsCompanyId || exportingCsv" class="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50" x-text="exportingCsv ? 'جاري التصدير...' : 'تصدير الأصول CSV'"></button>
+            <button type="button" @click="downloadBranchesCsv()" :disabled="!reportsCompanyId || exportingCsv" class="bg-slate-600 text-white px-4 py-2 rounded-xl hover:bg-slate-700 disabled:opacity-50" x-text="exportingCsv ? 'جاري التصدير...' : 'تصدير الفروع CSV'"></button>
+            <button type="button" @click="downloadEmployeesCsv()" :disabled="!reportsCompanyId || exportingCsv" class="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-50" x-text="exportingCsv ? 'جاري التصدير...' : 'تصدير الموظفين CSV'"></button>
+          </div>
+          <p x-show="!reportsCompanyId" class="text-slate-500 dark:text-slate-400 py-2">اختر شركة لتصدير تقارير الأصول أو الفروع أو الموظفين.</p>
+          <div class="flex flex-wrap gap-4 items-center pt-2 border-t border-slate-200 dark:border-slate-600">
+            <span class="text-slate-500 dark:text-slate-400 text-sm">بدون شركة:</span>
+            <button type="button" @click="downloadGroupsCsv()" :disabled="exportingCsv" class="bg-amber-600 text-white px-4 py-2 rounded-xl hover:bg-amber-700 disabled:opacity-50" x-text="exportingCsv ? 'جاري التصدير...' : 'تصدير المجموعات CSV'"></button>
+            <button type="button" @click="downloadCompaniesCsv()" :disabled="exportingCsv" class="bg-teal-600 text-white px-4 py-2 rounded-xl hover:bg-teal-700 disabled:opacity-50" x-text="exportingCsv ? 'جاري التصدير...' : 'تصدير الشركات CSV'"></button>
+          </div>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-4">لتقرير تدقيق: اذهب إلى التدقيق واختر الجلسة ثم «تحميل تقرير PDF».</p>
+        </div>
+      </div>
+
+      <!-- الإعدادات -->
+      <div x-show="route === '/settings'" x-transition class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">النسخ الاحتياطي والاستعادة</h3>
+              <p class="text-slate-500 dark:text-slate-400 mb-4">تصدير نسخة احتياطية كاملة من البيانات (ZIP) أو استعادة من ملف سابق.</p>
+              <div class="flex flex-wrap gap-4 items-center">
+                <button type="button" @click="exportBackup()" :disabled="exportingBackup" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" x-text="exportingBackup ? 'جاري التصدير...' : 'تصدير نسخة احتياطية'"></button>
+            <div class="flex items-center gap-2">
+              <input type="file" accept=".zip" @change="restoreBackup($event.target.files[0]); $event.target.value = ''" class="hidden" id="restore-file" :disabled="restoringBackup" />
+              <label for="restore-file" class="bg-amber-600 text-white px-4 py-2 rounded-xl hover:bg-amber-700 cursor-pointer" :class="{ 'pointer-events-none opacity-70': restoringBackup }"><span x-text="restoringBackup ? 'جاري الاستعادة...' : 'استعادة من ملف'"></span></label>
+            </div>
+              </div>
+              <p class="text-sm text-amber-600 dark:text-amber-400 mt-3">تحذير: الاستعادة تستبدل كل البيانات الحالية ببيانات الملف.</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">تخصيص التنبيهات (صيانة، ضمان، فقد)</h3>
+              <p class="text-slate-500 dark:text-slate-400 mb-4">تعديل العناوين الظاهرة لأقسام التنبيهات في لوحة التحكم وصفحة التنبيهات.</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">عنوان قسم «تحتاج صيانة»</label>
+                  <input type="text" x-model="alertLabels.maintenance" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" placeholder="تحتاج صيانة" />
+                </div>
+                <div>
+                  <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">عنوان قسم «الضمان»</label>
+                  <input type="text" x-model="alertLabels.warranty" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" placeholder="الضمان ينتهي هذا الشهر" />
+                </div>
+                <div>
+                  <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">عنوان قسم «مفقود»</label>
+                  <input type="text" x-model="alertLabels.loss" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" placeholder="مفقود" />
+                </div>
+                <button type="button" @click="saveAlertLabels()" :disabled="savingSettingsAlerts" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" x-text="savingSettingsAlerts ? 'جاري الحفظ...' : 'حفظ تسميات التنبيهات'"></button>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">أنواع الأصول والحقول المخصصة</h3>
+              <p class="text-slate-500 dark:text-slate-400 mb-4">تحكم في أنواع الأصول (لابتوب، طابعة، ...) والحقول الظاهرة لكل نوع. يمكنك إضافة أو تعديل الحقول من هنا أو من نافذة إضافة/تعديل الأصل. الصيغة: JSON لكل نوع يحتوي مصفوفة من { key, label }.</p>
+              <div class="mb-2">
+                <button type="button" @click="loadSettingsAssetSpecJson()" class="text-primary-600 dark:text-primary-400 hover:underline text-sm">تحميل القيم الحالية</button>
+              </div>
+              <textarea x-model="settingsAssetSpecJson" rows="14" placeholder='{"laptop":[{"key":"ram","label":"الرام"}],...}' class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 font-mono text-sm resize-y"></textarea>
+              <button type="button" @click="saveAssetSpecFields()" :disabled="savingSettingsSpecs" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" x-text="savingSettingsSpecs ? 'جاري الحفظ...' : 'حفظ حقول أنواع الأصول'"></button>
+            </div>
+          </div>
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">المظهر</h3>
+              <p class="text-slate-500 dark:text-slate-400 mb-4">الوضع الليلي: يمكنك تبديله من أيقونة 🌙/☀️ في أعلى الصفحة.</p>
+              <p class="text-sm text-slate-600 dark:text-slate-300" x-text="darkMode ? 'الوضع الحالي: ليلي' : 'الوضع الحالي: فاتح'"></p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">النظام</h3>
+              <p class="text-slate-500 dark:text-slate-400">STC GACMS — نظام إدارة أصول المجموعة. إعدادات النسخ الاحتياطي والتنبيهات والأصول في هذه الصفحة.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- المستخدمون -->
+      <div x-show="route === '/users'" x-transition class="space-y-6">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex gap-2 items-center">
+            <p class="text-slate-600 dark:text-slate-300">مستخدمون الشركة</p>
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm cursor-pointer" x-show="usersCompanyId">
+              <input type="checkbox" x-model="includeDeletedUsers" @change="loadUsers()" class="rounded" />
+              عرض المحذوفة
+            </label>
+            <select x-model="usersCompanyId" @change="loadUsers()" class="rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 py-2">
+              <option value="">— كل الشركات —</option>
+              <template x-for="c in companiesAll.items" :key="c.id">
+                <option :value="c.id" x-text="c.name"></option>
+              </template>
+            </select>
+          </div>
+          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'user', companyId: usersCompanyId })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مستخدم</button>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <p x-show="loadingUsers" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
+          <table x-show="!loadingUsers" class="w-full">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+              <tr>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">البريد</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الصلاحية</th>
+                <th class="text-right py-4 px-4 font-medium text-slate-700 dark:text-slate-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="u in usersList.items" :key="u.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="{ 'opacity-70': u.is_deleted }">
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="u.email"></td>
+                  <td class="py-4 px-4 dark:text-slate-200" x-text="u.role"></td>
+                  <td class="py-4 px-4">
+                    <template x-if="!u.is_deleted">
+                      <span>
+                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'user', item: u })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'user', id: u.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                      </span>
+                    </template>
+                    <template x-if="u.is_deleted">
+                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'user', id: u.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p x-show="usersList.items && usersList.items.length === 0 && !loadingUsers" class="p-8 text-center text-slate-500 dark:text-slate-400">اختر شركة أو لا يوجد مستخدمون.</p>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- نافذة منبثقة للمجموعة -->
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': groupModalOpen }" @click.self="groupModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="group-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingGroup ? 'تعديل المجموعة' : 'إضافة مجموعة'"></h3>
+      <form @submit.prevent="saveGroup">
+        <input type="text" x-model="groupForm.name" placeholder="اسم المجموعة" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="groupModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingGroup" x-text="savingGroup ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': userModalOpen }" @click.self="userModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="user-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingUser ? 'تعديل المستخدم' : 'إضافة مستخدم'"></h3>
+      <form @submit.prevent="saveUser" class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">البريد الإلكتروني</label>
+          <input type="email" x-model="userForm.email" required placeholder="user@example.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" :readonly="!!editingUser" />
+        </div>
+        <div x-show="!editingUser">
+          <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">كلمة المرور (8 أحرف على الأقل)</label>
+          <input type="password" x-model="userForm.password" :required="!editingUser" minlength="8" placeholder="••••••••" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" />
+        </div>
+        <div x-show="editingUser">
+          <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">كلمة مرور جديدة (اتركها فارغة لعدم التغيير)</label>
+          <input type="password" x-model="userForm.password" minlength="8" placeholder="••••••••" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">الشركة (فارغ = مدير مجموعة)</label>
+          <select x-model="userForm.company_id" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2">
+            <option value="">— مدير مجموعة —</option>
+            <template x-for="c in companiesAll.items" :key="c.id">
+              <option :value="c.id" x-text="c.name"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">الصلاحية</label>
+          <select x-model="userForm.role" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2">
+            <option value="group_admin">مدير مجموعة</option>
+            <option value="company_admin">مدير شركة</option>
+            <option value="branch_manager">مدير فرع</option>
+            <option value="auditor">مدقق</option>
+            <option value="user">مستخدم</option>
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" @click="userModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingUser" x-text="savingUser ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': companyModalOpen }" @click.self="companyModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="company-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-600 my-8 max-h-[90vh] overflow-y-auto">
+      <h3 id="company-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingCompany ? 'تعديل الشركة وإعدادات المستندات' : 'إضافة شركة'"></h3>
+      <form @submit.prevent="saveCompany" class="space-y-6">
+        <div>
+          <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">البيانات الأساسية</h4>
+          <input type="text" x-model="companyForm.name" placeholder="اسم الشركة" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3" />
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">إعدادات المستندات PDF (لوجو، بيانات الظهور، النص القانوني)</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-500 mb-3">هذه البيانات تظهر في مستندات التسليم الموقّعة. كل شركة لها إعدادات منفصلة.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">الشعار</label>
+              <div class="flex flex-wrap items-center gap-3">
+                <template x-if="companyForm.logo_url">
+                  <div class="shrink-0">
+                    <img :src="(companyForm.logo_url && companyForm.logo_url.startsWith('/')) ? (window.location.origin + companyForm.logo_url) : companyForm.logo_url" alt="شعار" class="h-14 w-auto object-contain rounded border border-slate-200 dark:border-slate-600" />
+                  </div>
+                </template>
+                <template x-if="editingCompany">
+                  <div>
+                    <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" @change="uploadCompanyLogo($event.target.files[0]); $event.target.value = ''" class="hidden" id="company-logo-upload" />
+                    <label for="company-logo-upload" class="inline-block px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600">رفع شعار من الجهاز</label>
+                  </div>
+                </template>
+                <div class="flex-1 min-w-0">
+                  <input type="text" x-model="companyForm.logo_url" placeholder="أو رابط الشعار (URL)" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">لون الهوية (مثل #2563eb)</label>
+              <input type="text" x-model="companyForm.primary_color" placeholder="#2563eb" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">العنوان</label>
+              <input type="text" x-model="companyForm.address" placeholder="عنوان الشركة" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">الهاتف</label>
+              <input type="text" x-model="companyForm.phone" placeholder="+966..." class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">البريد الإلكتروني</label>
+              <input type="email" x-model="companyForm.email" placeholder="info@company.com" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">الموقع الإلكتروني</label>
+              <input type="text" x-model="companyForm.website" placeholder="https://..." class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">النص القانوني (يظهر في أسفل المستند)</label>
+              <textarea x-model="companyForm.legal_text" placeholder="شروط الاستلام والمسؤولية..." rows="3" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 text-sm resize-y"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" @click="companyModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingCompany" x-text="savingCompany ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': branchModalOpen }" @click.self="branchModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="branch-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="branch-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingBranch ? 'تعديل الفرع' : 'إضافة فرع'"></h3>
+      <form @submit.prevent="saveBranch">
+        <input type="text" x-model="branchForm.name" placeholder="اسم الفرع" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="branchForm.address" placeholder="العنوان" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="branchModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingBranch" x-text="savingBranch ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': employeeModalOpen }" @click.self="employeeModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="employee-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-600">
+      <h3 id="employee-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingEmployee ? 'تعديل الموظف' : 'إضافة موظف'"></h3>
+      <form @submit.prevent="saveEmployee">
+        <input type="text" x-model="employeeForm.name" placeholder="الاسم" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="employeeForm.national_id" placeholder="رقم الهوية" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="employeeForm.job_title" placeholder="المسمى الوظيفي" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="employeeForm.department" placeholder="القسم" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <select x-model="employeeForm.status" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4">
+          <option value="active">نشط</option>
+          <option value="resigned">استقال</option>
+          <option value="terminated">منتهي</option>
+        </select>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="employeeModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingEmployee" x-text="savingEmployee ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': assignModalOpen }" @click.self="assignModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="assign-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">تعيين الأصل لموظف</h3>
+      <form @submit.prevent="doAssign">
+        <label for="assign-employee-select" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">الموظف</label>
+        <select id="assign-employee-select" x-model="assignEmployeeId" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4">
+          <option value="">— اختر الموظف —</option>
+          <template x-for="e in employeesForAssign" :key="e.id">
+            <option :value="e.id" x-text="e.name + (e.department ? ' - ' + e.department : '')"></option>
+          </template>
+        </select>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="assignModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="assigning" x-text="assigning ? 'جاري التعيين...' : 'تعيين'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- نقل أصل لموظف آخر -->
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': transferModalOpen }" @click.self="transferModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="transfer-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">نقل الأصل لموظف آخر</h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mb-3" x-show="assetDetail && assetDetail.current_employee_id">يُسجَّل في السجل: كان مع الموظف الحالي وراح للموظف الذي تختاره.</p>
+      <form @submit.prevent="doTransfer">
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">الموظف المستلم</label>
+        <select x-model="transferEmployeeId" required class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-3">
+          <option value="">— اختر الموظف —</option>
+          <template x-for="e in (employeesForAssign || []).filter(ee => ee.id !== assetDetail?.current_employee_id)" :key="e.id">
+            <option :value="e.id" x-text="e.name + (e.department ? ' - ' + e.department : '')"></option>
+          </template>
+        </select>
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ملاحظات (اختياري)</label>
+        <input type="text" x-model="transferNotes" placeholder="ملاحظات عن النقل" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-2 mb-4" />
+        <label class="flex items-center gap-2 mb-4 cursor-pointer">
+          <input type="checkbox" x-model="transferCreateHandover" class="rounded" />
+          <span class="text-sm text-slate-700 dark:text-slate-300">إنشاء مستند تسليم (تعهد) للموظف المستلم</span>
+        </label>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="transferModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-amber-600 text-white px-4 py-2 rounded-xl hover:bg-amber-700 disabled:opacity-50" :disabled="transferring" x-text="transferring ? 'جاري النقل...' : 'نقل'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- نافذة منبثقة للأصل -->
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': assetModalOpen }" @click.self="assetModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="asset-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="asset-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4" x-text="editingAsset ? 'تعديل الأصل' : 'إضافة أصل'"></h3>
+      <form @submit.prevent="saveAsset">
+        <label for="asset-type-select" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">نوع الأصل</label>
+        <select id="asset-type-select" x-model="assetForm.type" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4">
+          <option value="laptop">لابتوب</option>
+          <option value="mobile">موبايل</option>
+          <option value="tablet">تابلت</option>
+          <option value="desktop">كمبيوتر مكتبي</option>
+          <option value="monitor">شاشة</option>
+          <option value="peripheral">ملحق</option>
+          <option value="printer">طابعة</option>
+          <option value="other">أخرى</option>
+        </select>
+        <input type="text" x-model="assetForm.brand" placeholder="العلامة التجارية" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="assetForm.model" placeholder="الموديل" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <input type="text" x-model="assetForm.serial_number" placeholder="الرقم التسلسلي" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" />
+        <template x-for="f in specFieldsForType(assetForm.type)" :key="f.key">
+          <div class="mb-4">
+            <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1" x-text="f.label"></label>
+            <input type="text" :placeholder="f.label" x-model="assetForm.specifications[f.key]" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3" />
+          </div>
+        </template>
+        <div class="mb-4">
+          <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">ملاحظات</label>
+          <textarea x-model="assetForm.notes" placeholder="ملاحظات إضافية" rows="3" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3"></textarea>
+        </div>
+        <select x-model="assetForm.status" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3 mb-4" x-show="editingAsset">
+          <option value="active">نشط</option>
+          <option value="maintenance">صيانة</option>
+          <option value="lost">مفقود</option>
+          <option value="retired">مُستبعَد</option>
+        </select>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="assetModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingAsset" x-text="savingAsset ? 'جاري الحفظ...' : 'حفظ'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="gacms-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" :class="{ 'gacms-modal-open': auditModalOpen }" @click.self="auditModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-600">
+      <h3 id="audit-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">بدء جلسة تدقيق</h3>
+      <form @submit.prevent="startAudit()">
+        <div class="mb-4">
+          <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الشركة</label>
+          <select x-model="newAuditCompanyId" required @change="loadBranchesForAudit()" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3">
+            <option value="">— اختر شركة —</option>
+            <template x-for="c in companiesAll.items" :key="c.id">
+              <option :value="c.id" x-text="c.name"></option>
+            </template>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm text-slate-500 dark:text-slate-400 mb-1">الفرع (اختياري)</label>
+          <select x-model="newAuditBranchId" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-4 py-3">
+            <option value="">— الكل —</option>
+            <template x-for="b in branchesForAudit" :key="b.id">
+              <option :value="b.id" x-text="b.name"></option>
+            </template>
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="auditModalOpen = false" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:text-slate-200">إلغاء</button>
+          <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50" :disabled="savingAudit" x-text="savingAudit ? 'جاري البدء...' : 'بدء التدقيق'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    function run() {
+      var apiBase = window.location.origin + '/api/v1';
+      var loginScreen = document.getElementById('login-screen');
+      var appRoot = document.getElementById('app-root');
+      var loginForm = document.getElementById('login-form');
+      var loginError = document.getElementById('login-error');
+      var loginSubmit = document.getElementById('login-submit');
+      var loginBtnText = document.getElementById('login-btn-text');
+      var loginBtnLoading = document.getElementById('login-btn-loading');
+
+      function showLogin() {
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (appRoot) appRoot.style.display = 'none';
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname || '/');
+        }
+      }
+      function showApp() {
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (appRoot) appRoot.style.display = 'flex';
+      }
+      function setError(msg) {
+        if (!loginError) return;
+        loginError.textContent = msg || '';
+        loginError.classList.toggle('hidden', !msg);
+      }
+      function wireLoginForm() {
+        if (!loginForm) return;
+        loginForm.onsubmit = function(e) {
+          e.preventDefault();
+          var email = document.getElementById('login-email').value.trim();
+          var password = document.getElementById('login-password').value;
+          setError('');
+          loginSubmit.disabled = true;
+          loginBtnText.classList.add('hidden');
+          loginBtnLoading.classList.remove('hidden');
+          fetch(apiBase + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+          }).then(function(r) { return r.text().then(function(t) { return { ok: r.ok, text: t }; }); })
+            .then(function(res) {
+              var data = {};
+              try { data = res.text ? JSON.parse(res.text) : {}; } catch (_) {}
+              loginSubmit.disabled = false;
+              loginBtnText.classList.remove('hidden');
+              loginBtnLoading.classList.add('hidden');
+              if (res.ok && data.access_token) {
+                localStorage.setItem('gacms_token', data.access_token);
+                window.location.replace(window.location.pathname || '/');
+                return;
+              }
+              if (data.detail) setError(typeof data.detail === 'string' ? data.detail : 'فشل تسجيل الدخول');
+              else setError('فشل تسجيل الدخول. تحقق من البريد وكلمة المرور.');
+            })
+            .catch(function() {
+              loginSubmit.disabled = false;
+              loginBtnText.classList.remove('hidden');
+              loginBtnLoading.classList.add('hidden');
+              setError('خطأ في الاتصال. تحقق من السيرفر والعنوان (مثلاً http://localhost:8000).');
+            });
+        };
+      }
+      function loadApp() {
+        showApp();
+        var s = document.createElement('script');
+        s.src = '/static/js/app.js';
+        s.onload = function() {
+          var a = document.createElement('script');
+          a.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js';
+          document.head.appendChild(a);
+        };
+        document.head.appendChild(s);
+      }
+
+      // لا يوجد توكن => نعرض تسجيل الدخول فوراً ولا نعرض التطبيق
+      if (!localStorage.getItem('gacms_token')) {
+        showLogin();
+        wireLoginForm();
+        return;
+      }
+      // يوجد توكن => نتحقق من صحته؛ إن فشل التحقق نرجع لشاشة الدخول
+      var token = localStorage.getItem('gacms_token');
+      fetch(apiBase + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) {
+          if (r.ok) { loadApp(); return; }
+          localStorage.removeItem('gacms_token');
+          setError('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.');
+          showLogin();
+          wireLoginForm();
+        })
+        .catch(function() {
+          localStorage.removeItem('gacms_token');
+          setError('انتهت الجلسة أو خطأ في الاتصال. يرجى تسجيل الدخول مرة أخرى.');
+          showLogin();
+          wireLoginForm();
+        });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+  })();
+  </script>
+</body>
+</html>
