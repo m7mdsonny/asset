@@ -77,7 +77,7 @@
   </div>
 
   <!-- التطبيق الرئيسي: يُحمّل ويُعرض فقط بعد التحقق من التوكن -->
-  <div id="app-root" style="display: none;" x-data="app()" x-init="init()" x-effect="onRouteChange()" @open-modal.window="window.__gacmsApp && window.__gacmsApp.handleOpenModal($event.detail)" @delete-item.window="window.__gacmsApp && window.__gacmsApp.handleDelete($event.detail)" @restore-item.window="window.__gacmsApp && window.__gacmsApp.handleRestore($event.detail)" :class="{ 'dark': darkMode }" class="flex min-h-screen">
+  <div id="app-root" style="display: none;" x-data="app()" x-init="init()" x-effect="onRouteChange()" @open-modal.window="handleOpenModal($event.detail)" @delete-item.window="handleDelete($event.detail)" @restore-item.window="handleRestore($event.detail)" :class="{ 'dark': darkMode }" class="flex min-h-screen">
     <a href="#main-content" class="skip-link" id="skip-link">تخطي إلى المحتوى الرئيسي</a>
     <!-- الشريط الجانبي -->
     <aside class="w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex flex-col fixed right-0 top-0 bottom-0 z-30 shadow-lg">
@@ -298,7 +298,7 @@
               عرض المحذوفة
             </label>
           </div>
-          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'group' })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مجموعة</button>
+          <button type="button" @click.prevent="openGroupModal()" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مجموعة</button>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
           <p x-show="loadingGroups" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
@@ -313,12 +313,12 @@
                   <td class="py-4 px-4">
                     <template x-if="!g.is_deleted">
                       <span>
-                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'group', item: g })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
-                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'group', id: g.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                        <button type="button" @click.prevent="openGroupModal(g)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="deleteGroup(g.id)" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
                       </span>
                     </template>
                     <template x-if="g.is_deleted">
-                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'group', id: g.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      <button type="button" @click.prevent="restoreGroup(g.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                     </template>
                   </td>
                 </tr>
@@ -346,7 +346,7 @@
                 <option :value="g.id" x-text="g.name"></option>
               </template>
             </select>
-            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'company' })" :disabled="!companiesGroupId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة شركة</button>
+            <button type="button" @click.prevent="openCompanyModal()" :disabled="!companiesGroupId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة شركة</button>
           </div>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
@@ -362,12 +362,12 @@
                   <td class="py-4 px-4">
                     <template x-if="!c.is_deleted">
                       <span>
-                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'company', item: c })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
-                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'company', id: c.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                        <button type="button" @click.prevent="openCompanyModal(c)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="deleteCompany(c.id)" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
                       </span>
                     </template>
                     <template x-if="c.is_deleted">
-                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'company', id: c.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      <button type="button" @click.prevent="restoreCompany(c.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                     </template>
                   </td>
                 </tr>
@@ -395,7 +395,7 @@
                 <option :value="c.id" x-text="c.name"></option>
               </template>
             </select>
-            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'branch' })" :disabled="!branchesCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة فرع</button>
+            <button type="button" @click.prevent="openBranchModal()" :disabled="!branchesCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة فرع</button>
           </div>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
@@ -416,12 +416,12 @@
                   <td class="py-4 px-4">
                     <template x-if="!b.is_deleted">
                       <span>
-                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'branch', item: b })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
-                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'branch', id: b.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                        <button type="button" @click.prevent="openBranchModal(b)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="deleteBranch(b.id)" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
                       </span>
                     </template>
                     <template x-if="b.is_deleted">
-                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'branch', id: b.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      <button type="button" @click.prevent="restoreBranch(b.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                     </template>
                   </td>
                 </tr>
@@ -455,7 +455,7 @@
                 <option :value="b.id" x-text="b.name"></option>
               </template>
             </select>
-            <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'employee' })" :disabled="!employeesCompanyId || !employeesBranchId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة موظف</button>
+            <button type="button" @click.prevent="openEmployeeModal()" :disabled="!employeesCompanyId || !employeesBranchId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة موظف</button>
           </div>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
@@ -478,12 +478,12 @@
                   <td class="py-4 px-4">
                     <template x-if="!e.is_deleted">
                       <span>
-                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'employee', item: e })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
-                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'employee', id: e.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                        <button type="button" @click.prevent="openEmployeeModal(e)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="deleteEmployee(e.id)" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
                       </span>
                     </template>
                     <template x-if="e.is_deleted">
-                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'employee', id: e.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      <button type="button" @click.prevent="restoreEmployee(e.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                     </template>
                   </td>
                 </tr>
@@ -609,7 +609,7 @@
                   <option :value="c.id" x-text="c.name"></option>
                 </template>
               </select>
-              <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'asset' })" :disabled="!assetsCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة أصل</button>
+              <button type="button" @click.prevent="openAssetModal()" :disabled="!assetsCompanyId" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700 disabled:opacity-50">إضافة أصل</button>
             </div>
           </div>
           <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
@@ -634,13 +634,13 @@
                     <td class="py-4 px-4">
                       <template x-if="!a.is_deleted">
                         <span>
-                          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'asset', item: a })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                          <button type="button" @click.prevent="openAssetModal(a)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
                           <button type="button" @click="viewAssetId = a.id; loadAssetDetail(a.id)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">عرض</button>
-                          <button type="button" @click.prevent="$dispatch('delete-item', { type: 'asset', id: a.id })" class="text-red-600 dark:text-red-400 hover:underline ml-2">حذف</button>
+                          <button type="button" @click.prevent="deleteAsset(a.id)" class="text-red-600 dark:text-red-400 hover:underline ml-2">حذف</button>
                         </span>
                       </template>
                       <template x-if="a.is_deleted">
-                        <button type="button" @click.prevent="$dispatch('restore-item', { type: 'asset', id: a.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                        <button type="button" @click.prevent="restoreAsset(a.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                       </template>
                     </td>
                   </tr>
@@ -990,7 +990,7 @@
               </template>
             </select>
           </div>
-          <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'user', companyId: usersCompanyId })" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مستخدم</button>
+          <button type="button" @click.prevent="openUserModal(); userForm.company_id = usersCompanyId || ''" class="bg-primary-600 text-white px-4 py-2 rounded-xl hover:bg-primary-700">إضافة مستخدم</button>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
           <p x-show="loadingUsers" class="flex items-center justify-center gap-2 p-8 text-slate-500 dark:text-slate-400"><span class="loading-spinner" aria-hidden="true"></span> جاري التحميل...</p>
@@ -1010,12 +1010,12 @@
                   <td class="py-4 px-4">
                     <template x-if="!u.is_deleted">
                       <span>
-                        <button type="button" @click.prevent="$dispatch('open-modal', { modal: 'user', item: u })" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
-                        <button type="button" @click.prevent="$dispatch('delete-item', { type: 'user', id: u.id })" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
+                        <button type="button" @click.prevent="openUserModal(u)" class="text-primary-600 dark:text-primary-400 hover:underline ml-2">تعديل</button>
+                        <button type="button" @click.prevent="deleteUser(u.id)" class="text-red-600 dark:text-red-400 hover:underline">حذف</button>
                       </span>
                     </template>
                     <template x-if="u.is_deleted">
-                      <button type="button" @click.prevent="$dispatch('restore-item', { type: 'user', id: u.id })" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
+                      <button type="button" @click.prevent="restoreUser(u.id)" class="text-green-600 dark:text-green-400 hover:underline">استعادة</button>
                     </template>
                   </td>
                 </tr>
