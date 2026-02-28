@@ -28,14 +28,17 @@ async def log_activity(
     try:
         uid = UUID(str(user_id)) if user_id else None
         svc = ActivityLogService(session)
-        await svc.log(
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            user_id=uid,
-            ip_address=ip_address,
-            details=details,
-        )
+        # Isolate log write in a SAVEPOINT so failures don't poison
+        # the outer business transaction.
+        async with session.begin_nested():
+            await svc.log(
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                user_id=uid,
+                ip_address=ip_address,
+                details=details,
+            )
     except Exception:
         logger.exception(
             "Failed to write activity log",
