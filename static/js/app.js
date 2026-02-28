@@ -1,4 +1,5 @@
-document.addEventListener('alpine:init', () => {
+function registerGacmsAlpineApp() {
+  if (!window.Alpine) return;
   Alpine.data('app', () => ({
     // --- الحالة الأساسية والمسار ---
     token: localStorage.getItem('gacms_token') || '',
@@ -1305,4 +1306,7 @@ document.addEventListener('alpine:init', () => {
       this.settingsAssetSpecJson = JSON.stringify(this.ASSET_SPEC_FIELDS, null, 2);
     }
   }));
-});
+}
+
+if (window.Alpine) registerGacmsAlpineApp();
+else document.addEventListener('alpine:init', registerGacmsAlpineApp);

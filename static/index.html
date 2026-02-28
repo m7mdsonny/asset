@@ -1364,16 +1364,34 @@
             });
         };
       }
+      function loadScriptWithFallback(urls, onDone, onFail) {
+        var i = 0;
+        function next() {
+          if (i >= urls.length) { if (onFail) onFail(); return; }
+          var src = urls[i++];
+          var el = document.createElement('script');
+          el.src = src;
+          el.defer = true;
+          el.onload = function() { if (onDone) onDone(); };
+          el.onerror = next;
+          document.head.appendChild(el);
+        }
+        next();
+      }
+
       function loadApp() {
         showApp();
-        var s = document.createElement('script');
-        s.src = '/static/js/app.js';
-        s.onload = function() {
-          var a = document.createElement('script');
-          a.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js';
-          document.head.appendChild(a);
-        };
-        document.head.appendChild(s);
+        // Load Alpine first with fallback CDNs. App code relies on Alpine runtime.
+        loadScriptWithFallback([
+          'https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js',
+          'https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js'
+        ], function() {
+          loadScriptWithFallback(['/static/js/app.js']);
+        }, function() {
+          showLogin();
+          setError('تعذر تحميل مكتبة الواجهة (Alpine.js). تحقق من اتصال الإنترنت أو سياسات الشبكة ثم أعد المحاولة.');
+          wireLoginForm();
+        });
       }
 
       // لا يوجد توكن => نعرض تسجيل الدخول فوراً ولا نعرض التطبيق
